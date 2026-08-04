@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTO · A.A. — Cadastro e Calendário</title>
+<!-- html2canvas é opcional: usado só para "Baixar PNG". Se estiver offline, o botão degrada para Imprimir/PDF. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{
+    --azul-escuro:#0B3D6B;
+    --azul:#1663A6;
+    --azul-claro:#E8F1FA;
+    --azul-linha:#CBDDEE;
+    --branco:#FFFFFF;
+    --fundo:#F4F8FC;
+    --texto:#12283D;
+    --texto-suave:#56697B;
+    --sucesso:#1B7A4B;
+    --erro:#B23A3A;
+    --raio:10px;
+    --sombra:0 1px 3px rgba(11,61,107,.08), 0 6px 20px rgba(11,61,107,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fundo);
+    color:var(--texto);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 18px 64px}
+
+  /* ---------- Cabeçalho / marca ---------- */
+  .marca{display:flex;align-items:center;gap:14px;margin:8px 0 4px}
+  .simbolo{width:46px;height:46px;color:var(--azul-escuro);flex:none}
+  .marca h1{
+    font-size:14px;letter-spacing:.34em;text-transform:uppercase;
+    font-weight:700;color:var(--azul-escuro);margin:0;line-height:1.3;
+  }
+  .marca p{margin:2px 0 0;font-size:13px;color:var(--texto-suave)}
+  .lema{
+    text-align:center;font-size:10.5px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--azul);margin:14px 0 22px;font-weight:600;
+  }
+  .lema span{white-space:nowrap}
+
+  /* ---------- Alternador Membro / Coordenador ---------- */
+  .tabs{display:flex;gap:8px;background:var(--azul-claro);padding:6px;border-radius:var(--raio);margin-bottom:24px}
+  .tabs button{
+    flex:1;border:0;background:transparent;padding:11px 10px;border-radius:7px;
+    font-size:14px;font-weight:600;color:var(--azul-escuro);cursor:pointer;letter-spacing:.02em;
+    transition:background .15s,color .15s;
+  }
+  .tabs button.ativo{background:var(--branco);color:var(--azul-escuro);box-shadow:var(--sombra)}
+  .tabs button:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+
+  /* ---------- Cartões e formulário ---------- */
+  .cartao{background:var(--branco);border:1px solid var(--azul-linha);border-radius:var(--raio);padding:22px;box-shadow:var(--sombra);margin-bottom:20px}
+  #viewMembro .cartao{max-width:640px;margin-left:auto;margin-right:auto}
+  .cartao > h2{
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--azul);
+    margin:0 0 4px;font-weight:700;
+  }
+  .cartao > .desc{font-size:13.5px;color:var(--texto-suave);margin:0 0 18px}
+
+  .campos{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+  .campo{display:flex;flex-direction:column;gap:5px}
+  .campo.largo{grid-column:1 / -1}
+  label{font-size:12.5px;font-weight:600;color:var(--azul-escuro)}
+  label .req{color:var(--erro)}
+  label .aux{font-weight:400;color:var(--texto-suave)}
+  input,select,textarea{
+    font-family:inherit;font-size:14.5px;color:var(--texto);
+    padding:10px 12px;border:1px solid var(--azul-linha);border-radius:8px;background:#fff;width:100%;
+  }
+  textarea{resize:vertical;min-height:64px}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--azul);outline-offset:0;border-color:var(--azul)}
+  .dica{font-size:11.5px;color:var(--texto-suave);margin-top:1px}
+
+  .botoes{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+  .btn{
+    font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;border-radius:8px;
+    padding:11px 18px;border:1px solid var(--azul);background:var(--azul);color:#fff;letter-spacing:.02em;
+    transition:filter .15s;
+  }
+  .btn:hover{filter:brightness(1.06)}
+  .btn:focus-visible{outline:2px solid var(--azul-escuro);outline-offset:2px}
+  .btn.sec{background:#fff;color:var(--azul)}
+  .btn.ghost{background:transparent;border-color:var(--azul-linha);color:var(--azul-escuro)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+
+  /* ---------- Prévia da mensagem ---------- */
+  .previa{margin-top:20px;display:none}
+  .previa.on{display:block}
+  .previa pre{
+    background:var(--azul-claro);border:1px solid var(--azul-linha);border-radius:8px;
+    padding:14px 16px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:13px;white-space:pre-wrap;word-break:break-word;color:var(--texto);margin:0;
+  }
+  .aviso{font-size:13px;padding:10px 12px;border-radius:8px;margin-top:12px}
+  .aviso.ok{background:#E7F4EC;color:var(--sucesso);border:1px solid #B6DCC5}
+  .aviso.erro{background:#FBEBEB;color:var(--erro);border:1px solid #E7BFBF}
+  .aviso.info{background:var(--azul-claro);color:var(--azul-escuro);border:1px solid var(--azul-linha)}
+
+  /* ---------- Calendário ---------- */
+  .cal-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:16px}
+  .cal-toolbar .campo{min-width:130px}
+  #areaCalendario{margin-top:8px}
+  .cal-doc{background:#fff;border:1px solid var(--azul-linha);border-radius:var(--raio);padding:22px 20px}
+  .cal-cab{display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--azul-escuro);padding-bottom:14px;margin-bottom:6px}
+  .cal-cab .simbolo{width:40px;height:40px}
+  .cal-cab h3{margin:0;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--azul-escuro);font-weight:700}
+  .cal-cab .mes{margin:2px 0 0;font-size:20px;font-weight:700;color:var(--azul-escuro);letter-spacing:.02em}
+  .cal-lema{font-size:9.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--azul);text-align:center;margin:12px 0 14px;font-weight:600}
+  .grade{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .dow{text-align:center;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--texto-suave);font-weight:700;padding:4px 0}
+  .cel{border:1px solid var(--azul-linha);border-radius:7px;min-height:64px;padding:6px 7px;background:#fff;display:flex;flex-direction:column;gap:4px}
+  .cel.vazia{background:#FAFCFE;border-style:dashed}
+  .cel .num{font-size:12px;font-weight:700;color:var(--azul-escuro)}
+  .item{background:var(--azul-claro);border-left:3px solid var(--azul);border-radius:4px;padding:4px 6px;font-size:10.5px;line-height:1.35;position:relative}
+  .item .tp{font-weight:700;color:var(--azul-escuro);display:block}
+  .item .hr{color:var(--azul);font-weight:600}
+  .item .lc{color:var(--texto-suave)}
+  .item .pp{color:var(--texto);display:block;margin-top:1px}
+  .item .ob{color:var(--texto-suave);display:block;margin-top:1px;font-style:italic}
+  .item .rm{position:absolute;top:2px;right:3px;border:0;background:transparent;color:var(--erro);cursor:pointer;font-size:13px;line-height:1;padding:0 2px}
+  .cal-rodape{margin-top:16px;border-top:1px solid var(--azul-linha);padding-top:12px;display:flex;justify-content:space-between;align-items:end;flex-wrap:wrap;gap:12px}
+  .grupo-info{font-size:11.5px;color:var(--texto-suave);line-height:1.6}
+  .grupo-info b{color:var(--azul-escuro)}
+  .assinatura{font-style:italic;color:var(--azul-escuro);font-size:13px;font-weight:600}
+
+  .relatorio{font-size:12.5px;color:var(--texto-suave);margin-top:12px}
+  .relatorio b{color:var(--azul-escuro)}
+
+  @media (max-width:640px){
+    .campos{grid-template-columns:1fr}
+    .marca h1{letter-spacing:.22em}
+    .cel{min-height:auto}
+    .grade{gap:3px}
+    .item{font-size:9.5px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  /* ---------- Impressão: só o calendário, em paisagem ---------- */
+  @media print{
+    @page{ size:landscape; margin:12mm; }
+    body{background:#fff}
+    .wrap{max-width:none;padding:0}
+    .nao-imprimir{display:none!important}
+    .cal-doc{border:0;box-shadow:none;padding:0}
+    .item .rm{display:none}
+    .cel{break-inside:avoid}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Cabeçalho -->
+  <div class="marca nao-imprimir">
+    <svg class="simbolo" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="4"/>
+      <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="40" fill="currentColor">AA</text>
+    </svg>
+    <div>
+      <h1>Alcoólicos Anônimos</h1>
+      <p>Trabalho de CTO — Comitê Trabalhando com os Outros</p>
+    </div>
+  </div>
+  <div class="lema nao-imprimir"><span>Unidade · Serviço · Recuperação</span></div>
+
+  <!-- Alternador -->
+  <div class="tabs nao-imprimir" role="tablist">
+    <button id="tabMembro" class="ativo" role="tab" onclick="mostrar('membro')">Sou membro</button>
+    <button id="tabCoord" role="tab" onclick="mostrar('coord')">Sou coordenador</button>
+  </div>
+
+  <!-- ============ MODO MEMBRO ============ -->
+  <section id="viewMembro">
+    <div class="cartao nao-imprimir">
+      <h2>Ficha de inscrição</h2>
+      <p class="desc">Escolha o dia, o horário e monte sua equipe (mínimo de duas pessoas). Ao final, toque em <b>Enviar no WhatsApp</b> e mande a mensagem ao coordenador do CTO.</p>
+
+      <div class="campos">
+        <div class="campo">
+          <label for="mMes">Mês <span class="req">*</span></label>
+          <select id="mMes"></select>
+        </div>
+        <div class="campo">
+          <label for="mAno">Ano <span class="req">*</span></label>
+          <select id="mAno"></select>
+        </div>
+
+        <div class="campo largo">
+          <label for="mTipo">Tipo de atividade <span class="req">*</span></label>
+          <select id="mTipo" onchange="ajustarLocal()"></select>
+        </div>
+
+        <div class="campo">
+          <label for="mDia">Dia <span class="req">*</span></label>
+          <select id="mDia"></select>
+        </div>
+        <div class="campo">
+          <label for="mHora">Horário <span class="req">*</span> <span class="aux">(livre)</span></label>
+          <input id="mHora" type="text" placeholder="ex.: 9h às 10h" autocomplete="off">
+        </div>
+
+        <div class="campo largo">
+          <label for="mLocal" id="lblLocal">Local <span class="req">*</span></label>
+          <input id="mLocal" type="text" autocomplete="off">
+          <span class="dica" id="dicaLocal"></span>
+        </div>
+
+        <div class="campo">
+          <label for="mP1">Participante 1 <span class="req">*</span></label>
+          <input id="mP1" type="text" placeholder="Primeiro nome" autocomplete="off">
+        </div>
+        <div class="campo">
+          <label for="mP2">Participante 2 <span class="req">*</span></label>
+          <input id="mP2" type="text" placeholder="Primeiro nome" autocomplete="off">
+        </div>
+
+        <div class="campo largo">
+          <label for="mOutros">Outros participantes <span class="aux">(opcional — um nome por linha)</span></label>
+          <textarea id="mOutros" placeholder="Nome&#10;Nome"></textarea>
+        </div>
+
+        <div class="campo">
+          <label for="mTel">Telefone <span class="aux">(opcional)</span></label>
+          <input id="mTel" type="text" placeholder="(13) 90000-0000" autocomplete="off">
+        </div>
+        <div class="campo">
+          <label for="mObs">Observações <span class="aux">(opcional)</span></label>
+          <input id="mObs" type="text" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="botoes">
+        <button class="btn" onclick="gerarMensagem()">Gerar mensagem</button>
+        <button class="btn sec" onclick="limparFicha()">Limpar</button>
+      </div>
+
+      <div id="previaMembro" class="previa">
+        <div class="aviso info" style="margin-bottom:10px">Confira a mensagem abaixo e envie ao coordenador.</div>
+        <pre id="textoMensagem"></pre>
+        <div class="botoes">
+          <button class="btn" onclick="enviarWhatsApp()">Enviar no WhatsApp</button>
+          <button class="btn sec" onclick="copiarMensagem()">Copiar mensagem</button>
+          <button class="btn ghost" onclick="abrirGoogleAgenda()">🔔 Adicionar ao Google Agenda</button>
+        </div>
+        <div id="avisoCopia"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MODO COORDENADOR ============ -->
+  <section id="viewCoord" style="display:none">
+    <div class="cartao nao-imprimir">
+      <h2>Painel do coordenador</h2>
+      <p class="desc">Cole aqui as mensagens recebidas no WhatsApp (pode colar várias de uma vez). O painel lê os cadastros, monta o calendário do mês escolhido e permite imprimir ou salvar em PDF/PNG.</p>
+
+      <div class="cal-toolbar">
+        <div class="campo">
+          <label for="cMes">Mês do calendário</label>
+          <select id="cMes"></select>
+        </div>
+        <div class="campo">
+          <label for="cAno">Ano</label>
+          <select id="cAno"></select>
+        </div>
+      </div>
+
+      <div class="campo largo" style="margin-bottom:14px">
+        <label for="cCola">Mensagens recebidas</label>
+        <textarea id="cCola" style="min-height:150px" placeholder="Cole aqui as mensagens do grupo/coordenador..."></textarea>
+        <span class="dica">O painel reconhece automaticamente as linhas que começam com <code>#CTO|</code> — o restante do texto é ignorado.</span>
+      </div>
+
+      <div class="botoes">
+        <button class="btn" onclick="gerarCalendario()">Gerar calendário</button>
+        <button class="btn sec" onclick="abrirManual()">Adicionar manualmente</button>
+        <button class="btn ghost" onclick="limparPainel()">Limpar tudo</button>
+      </div>
+
+      <!-- Mini-formulário de inclusão manual -->
+      <div id="boxManual" class="cartao" style="display:none;margin-top:16px;background:var(--azul-claro)">
+        <div class="campos">
+          <div class="campo"><label>Dia</label><select id="xDia"></select></div>
+          <div class="campo"><label>Tipo</label><select id="xTipo"></select></div>
+          <div class="campo"><label>Horário</label><input id="xHora" placeholder="ex.: 9h às 10h"></div>
+          <div class="campo"><label>Local</label><input id="xLocal"></div>
+          <div class="campo largo"><label>Observações <span class="aux">(opcional — detalhe o "Outro", se for o caso)</span></label><input id="xObs" placeholder="Ex.: Feira de saúde do bairro"></div>
+          <div class="campo largo"><label>Participantes <span class="aux">(um por linha)</span></label><textarea id="xParts" placeholder="Nome&#10;Nome"></textarea></div>
+        </div>
+        <div class="botoes">
+          <button class="btn" onclick="incluirManual()">Incluir no calendário</button>
+          <button class="btn ghost" onclick="document.getElementById('boxManual').style.display='none'">Fechar</button>
+        </div>
+      </div>
+
+      <div id="relatorio" class="relatorio"></div>
+    </div>
+
+    <!-- Documento do calendário (é o que vai para impressão/PNG) -->
+    <div id="areaCalendario"></div>
+
+    <div class="botoes nao-imprimir" id="botoesExport" style="display:none">
+      <button class="btn" onclick="window.print()">Imprimir / Salvar PDF</button>
+      <button class="btn sec" id="btnPng" onclick="baixarPNG()">Baixar imagem (PNG)</button>
+    </div>
+
+    <!-- Lembretes para o grupo -->
+    <div id="cardLembrete" class="cartao nao-imprimir" style="display:none;margin-top:20px">
+      <h2>Lembrar os membros inscritos</h2>
+      <p class="desc">Gera um texto pronto para colar no grupo do WhatsApp, com as atividades e as duplas já combinadas — para ninguém esquecer o próprio compromisso.</p>
+      <div class="botoes">
+        <button class="btn" onclick="gerarLembrete('semana')">Lembrete dos próximos 7 dias</button>
+        <button class="btn sec" onclick="gerarLembrete('mes')">Lembrete do mês inteiro</button>
+      </div>
+      <div id="previaLembrete" class="previa">
+        <pre id="textoLembrete"></pre>
+        <div class="botoes">
+          <button class="btn" onclick="enviarLembreteWhatsApp()">Enviar no WhatsApp</button>
+          <button class="btn sec" onclick="copiarLembrete()">Copiar lembrete</button>
+        </div>
+        <div id="avisoCopiaLembrete"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ==========================================================================
+   CTO · A.A. — arquivo único, sem servidor.
+   Fonte de dados = as próprias mensagens do WhatsApp. Nada é gravado no
+   dispositivo; a cada uso o coordenador cola as mensagens e regenera.
+   ========================================================================== */
+
+// Tipos de atividade (código curto usado na linha-código + rótulo exibido)
+const TIPOS = [
+  {cod:"FOLHET",  rotulo:"Folhetagem / Informação ao Público", localLbl:"Local (ponto de folhetagem)", dica:"Prefira locais de grande circulação, como supermercados da região."},
+  {cod:"PALESTRA",rotulo:"Palestra ou reunião de divulgação",  localLbl:"Local (instituição / evento)",  dica:"Ex.: clínica, comunidade terapêutica, evento de divulgação."},
+  {cod:"SAUDE",   rotulo:"Cooperação — profissionais da Saúde",localLbl:"Local (instituição de saúde)", dica:"Ex.: hospital, UBS, CAPS, consultório."},
+  {cod:"EDUC",    rotulo:"Cooperação — profissionais da Educação",localLbl:"Local (instituição de ensino)",dica:"Ex.: escola, universidade, curso."},
+  {cod:"JUSTICA", rotulo:"Cooperação — profissionais da Justiça",localLbl:"Local (instituição)",         dica:"Ex.: fórum, defensoria, unidade prisional."},
+  {cod:"COMUNIC", rotulo:"Cooperação — Comunicação Social",   localLbl:"Local (veículo / meio)",       dica:"Ex.: rádio, jornal, portal, TV comunitária."},
+  {cod:"OUTRO",   rotulo:"Outro",                             localLbl:"Local",                        dica:""}
+];
+const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const DOW = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+
+// Estado do painel do coordenador
+let entradas = [];
+
+// ---------- Utilidades ----------
+function rotuloTipo(cod){ const t = TIPOS.find(x=>x.cod===cod); return t ? t.rotulo : cod; }
+function diasNoMes(ano, mes0){ return new Date(ano, mes0+1, 0).getDate(); }
+// Remove os separadores da linha-código para não corromper o parsing
+function limpaCampo(s){ return (s||"").replace(/[|\n\r]/g," ").trim(); }
+function limpaNome(s){ return (s||"").replace(/[|;\n\r]/g," ").trim(); }
+
+// ---------- Preenchimento inicial dos selects ----------
+function popularSelects(){
+  const anoAtual = new Date().getFullYear();
+  const mesAtual = new Date().getMonth();
+
+  // Meses
+  [ "mMes","cMes" ].forEach(id=>{
+    const s = document.getElementById(id);
+    MESES.forEach((m,i)=>{ const o=document.createElement("option"); o.value=i; o.textContent=m; s.appendChild(o); });
+    s.value = mesAtual;
+  });
+  // Anos (atual até +3)
+  [ "mAno","cAno" ].forEach(id=>{
+    const s = document.getElementById(id);
+    for(let a=anoAtual; a<=anoAtual+3; a++){ const o=document.createElement("option"); o.value=a; o.textContent=a; s.appendChild(o); }
+    s.value = anoAtual;
+  });
+  // Tipos (ficha e inclusão manual)
+  [ "mTipo","xTipo" ].forEach(id=>{
+    const s = document.getElementById(id);
+    TIPOS.forEach(t=>{ const o=document.createElement("option"); o.value=t.cod; o.textContent=t.rotulo; s.appendChild(o); });
+  });
+
+  atualizarDias("mMes","mAno","mDia");
+  document.getElementById("mMes").addEventListener("change", ()=>atualizarDias("mMes","mAno","mDia"));
+  document.getElementById("mAno").addEventListener("change", ()=>atualizarDias("mMes","mAno","mDia"));
+  ajustarLocal();
+}
+
+// Preenche o select de dias conforme mês/ano
+function atualizarDias(idMes, idAno, idDia){
+  const mes0 = +document.getElementById(idMes).value;
+  const ano  = +document.getElementById(idAno).value;
+  const s = document.getElementById(idDia);
+  const anterior = s.value;
+  s.innerHTML = "";
+  const n = diasNoMes(ano, mes0);
+  for(let d=1; d<=n; d++){ const o=document.createElement("option"); o.value=d; o.textContent=d; s.appendChild(o); }
+  if(anterior && +anterior<=n) s.value = anterior;
+}
+
+// Ajusta rótulo/dica do campo Local conforme o tipo
+function ajustarLocal(){
+  const cod = document.getElementById("mTipo").value;
+  const t = TIPOS.find(x=>x.cod===cod);
+  document.getElementById("lblLocal").innerHTML = t.localLbl + ' <span class="req">*</span>';
+  document.getElementById("dicaLocal").textContent = t.dica || "";
+}
+
+// ---------- Navegação de abas ----------
+function mostrar(qual){
+  const m = qual==="membro";
+  document.getElementById("viewMembro").style.display = m ? "" : "none";
+  document.getElementById("viewCoord").style.display  = m ? "none" : "";
+  document.getElementById("tabMembro").classList.toggle("ativo", m);
+  document.getElementById("tabCoord").classList.toggle("ativo", !m);
+}
+
+/* ============ MODO MEMBRO ============ */
+function coletarFicha(){
+  const mes0 = +document.getElementById("mMes").value;
+  const ano  = +document.getElementById("mAno").value;
+  const dia  = +document.getElementById("mDia").value;
+  const tipo = document.getElementById("mTipo").value;
+  const hora = document.getElementById("mHora").value.trim();
+  const local= document.getElementById("mLocal").value.trim();
+  const p1   = document.getElementById("mP1").value.trim();
+  const p2   = document.getElementById("mP2").value.trim();
+  const outros = document.getElementById("mOutros").value.split("\n").map(x=>x.trim()).filter(Boolean);
+  const tel  = document.getElementById("mTel").value.trim();
+  const obs  = document.getElementById("mObs").value.trim();
+  return {mes0,ano,dia,tipo,hora,local,p1,p2,outros,tel,obs};
+}
+
+function validarFicha(f){
+  const faltas = [];
+  if(!f.hora)  faltas.push("horário");
+  if(!f.local) faltas.push("local");
+  if(!f.p1)    faltas.push("participante 1");
+  if(!f.p2)    faltas.push("participante 2");
+  return faltas;
+}
+
+let ultimaMensagem = "";
+
+function gerarMensagem(){
+  const f = coletarFicha();
+  const faltas = validarFicha(f);
+  const box = document.getElementById("previaMembro");
+  if(faltas.length){
+    box.classList.add("on");
+    document.getElementById("textoMensagem").textContent = "";
+    box.querySelector(".aviso").className = "aviso erro";
+    box.querySelector(".aviso").textContent = "Preencha: " + faltas.join(", ") + ".";
+    return;
+  }
+  box.querySelector(".aviso").className = "aviso info";
+  box.querySelector(".aviso").textContent = "Confira a mensagem abaixo e envie ao coordenador.";
+
+  const parts = [f.p1, f.p2, ...f.outros].map(limpaNome).filter(Boolean);
+  const dataISO = `${f.ano}-${String(f.mes0+1).padStart(2,"0")}-${String(f.dia).padStart(2,"0")}`;
+
+  // Linha-código (lida pelo painel) — campos separados por "|", participantes por ";"
+  const codigo = ["#CTO","v1",dataISO,f.tipo,limpaCampo(f.hora),limpaCampo(f.local),
+                  parts.join(";"),limpaCampo(f.tel),limpaCampo(f.obs)].join("|");
+
+  // Bloco legível para humanos
+  let bloco = "🔺 CADASTRO CTO · A.A.\n";
+  bloco += `Atividade: ${rotuloTipo(f.tipo)}\n`;
+  bloco += `Mês: ${MESES[f.mes0]}/${f.ano}\n`;
+  bloco += `Dia: ${f.dia}\n`;
+  bloco += `Horário: ${f.hora}\n`;
+  bloco += `Local: ${f.local}\n`;
+  bloco += `Participantes:\n` + parts.map(p=>`• ${p}`).join("\n") + "\n";
+  if(f.tel) bloco += `Telefone: ${f.tel}\n`;
+  if(f.obs) bloco += `Obs.: ${f.obs}\n`;
+  bloco += `\n${codigo}`;
+
+  ultimaMensagem = bloco;
+  document.getElementById("textoMensagem").textContent = bloco;
+  document.getElementById("avisoCopia").innerHTML = "";
+  box.classList.add("on");
+  box.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+function copiarMensagem(){
+  if(!ultimaMensagem) return;
+  const alvo = document.getElementById("avisoCopia");
+  const ok = ()=>{ alvo.innerHTML = '<div class="aviso ok">Mensagem copiada. Agora é só colar no WhatsApp do coordenador.</div>'; };
+  const falha = ()=>{ alvo.innerHTML = '<div class="aviso info">Selecione o texto acima e copie manualmente (Ctrl/Cmd+C).</div>'; };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ultimaMensagem).then(ok).catch(falha);
+  } else { falha(); }
+}
+
+function enviarWhatsApp(){
+  if(!ultimaMensagem) return;
+  // navigator.share (celular) → escolhe o contato; senão wa.me abre o WhatsApp para escolher a conversa
+  if(navigator.share){
+    navigator.share({text: ultimaMensagem}).catch(()=>{});
+  } else {
+    window.open("https://wa.me/?text=" + encodeURIComponent(ultimaMensagem), "_blank");
+  }
+}
+
+// Monta o link "Adicionar ao Google Agenda" com os dados da própria inscrição.
+// Sem servidor: é só uma URL — o Google Agenda faz o resto (inclusive o lembrete,
+// conforme a configuração de notificação de cada pessoa na própria conta).
+function abrirGoogleAgenda(){
+  const f = coletarFicha();
+  const faltas = validarFicha(f);
+  if(faltas.length) return; // segurança: só gera se a ficha estiver completa
+  const parts = [f.p1, f.p2, ...f.outros].map(limpaNome).filter(Boolean);
+
+  // Tenta reconhecer um horário de início no texto livre (ex.: "9h às 10h", "09:00")
+  const horaMatch = (f.hora||"").match(/(\d{1,2})[:h.](\d{2})?/i);
+  const pad = n => String(n).padStart(2,"0");
+  let datas;
+  if(horaMatch){
+    const hh = Math.min(23, parseInt(horaMatch[1],10));
+    const mm = Math.min(59, parseInt(horaMatch[2]||"0",10));
+    const inicio = new Date(f.ano, f.mes0, f.dia, hh, mm, 0);
+    const fim = new Date(inicio.getTime() + 60*60*1000); // +1 hora (cruza meia-noite/mês/ano corretamente)
+    // Converte para UTC (formato aceito pelo Google Agenda) usando o fuso do próprio aparelho de quem preenche
+    const fmtUTC = d => d.toISOString().replace(/[-:]/g,"").split(".")[0] + "Z";
+    datas = `${fmtUTC(inicio)}/${fmtUTC(fim)}`;
+  } else {
+    // Sem horário reconhecível: evento de dia inteiro (fim exclusivo = dia seguinte)
+    const inicioStr = `${f.ano}${pad(f.mes0+1)}${pad(f.dia)}`;
+    const prox = new Date(f.ano, f.mes0, f.dia+1);
+    const fimStr = `${prox.getFullYear()}${pad(prox.getMonth()+1)}${pad(prox.getDate())}`;
+    datas = `${inicioStr}/${fimStr}`;
+  }
+
+  const detalhes = [
+    parts.length ? `Participantes: ${parts.join(", ")}` : "",
+    "Trabalho de CTO — Alcoólicos Anônimos",
+  ].filter(Boolean).join("\n");
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `CTO A.A. — ${rotuloTipo(f.tipo)}`,
+    dates: datas,
+    details: detalhes,
+    location: f.local || "",
+  });
+
+  window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, "_blank");
+}
+
+function limparFicha(){
+  ["mHora","mLocal","mP1","mP2","mOutros","mTel","mObs"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("previaMembro").classList.remove("on");
+  ultimaMensagem = "";
+}
+
+/* ============ MODO COORDENADOR ============ */
+
+// Lê a linha-código e devolve um objeto de entrada (ou null se inválida)
+function lerCodigo(linha){
+  const p = linha.split("|");
+  if(p[0] !== "#CTO") return null;
+  // p: 0 tag, 1 versão, 2 data, 3 tipo, 4 horário, 5 local, 6 participantes, 7 tel, 8 obs
+  const dataISO = (p[2]||"").trim();
+  const m = dataISO.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return null;
+  const parts = (p[6]||"").split(";").map(x=>x.trim()).filter(Boolean);
+  return {
+    ano:+m[1], mes0:+m[2]-1, dia:+m[3],
+    tipo:(p[3]||"OUTRO").trim(),
+    hora:(p[4]||"").trim(),
+    local:(p[5]||"").trim(),
+    parts, tel:(p[7]||"").trim(), obs:(p[8]||"").trim(),
+    origem:"auto"
+  };
+}
+
+function gerarCalendario(){
+  const texto = document.getElementById("cCola").value;
+  // Extrai todas as linhas-código de qualquer bloco colado
+  const linhas = texto.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.startsWith("#CTO|"));
+  let lidas = 0, invalidas = 0;
+  const novas = [];
+  linhas.forEach(l=>{ const e = lerCodigo(l); if(e){ novas.push(e); lidas++; } else invalidas++; });
+
+  // Substitui as entradas automáticas (mantém as manuais já incluídas)
+  entradas = entradas.filter(e=>e.origem==="manual").concat(novas);
+
+  let rel = `<b>${lidas}</b> cadastro(s) reconhecido(s).`;
+  if(invalidas) rel += ` ${invalidas} linha(s) ignorada(s) por formato inválido.`;
+  const manuais = entradas.filter(e=>e.origem==="manual").length;
+  if(manuais) rel += ` ${manuais} inclusão(ões) manual(is) preservada(s).`;
+  document.getElementById("relatorio").innerHTML = rel;
+
+  renderCalendario();
+}
+
+function renderCalendario(){
+  const mes0 = +document.getElementById("cMes").value;
+  const ano  = +document.getElementById("cAno").value;
+
+  // Filtra entradas do mês/ano selecionado
+  const doMes = entradas.filter(e=>e.mes0===mes0 && e.ano===ano);
+  // Agrupa por dia
+  const porDia = {};
+  doMes.forEach(e=>{ (porDia[e.dia] = porDia[e.dia] || []).push(e); });
+
+  const nDias = diasNoMes(ano, mes0);
+  const primeiroDOW = new Date(ano, mes0, 1).getDay(); // 0=Dom
+
+  let html = '<div class="cal-doc" id="calDoc">';
+  html += '<div class="cal-cab">'
+        + '<svg class="simbolo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="4"/><text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="40" fill="currentColor">AA</text></svg>'
+        + '<div><h3>Calendário de Divulgação · CTO</h3>'
+        + `<div class="mes">${MESES[mes0]} de ${ano}</div></div></div>`;
+  html += '<div class="cal-lema">Comprometa uma hora — escolha o dia — monte sua equipe — leve a mensagem</div>';
+
+  html += '<div class="grade">';
+  DOW.forEach(d=> html += `<div class="dow">${d}</div>`);
+  for(let i=0;i<primeiroDOW;i++) html += '<div class="cel vazia"></div>';
+
+  for(let d=1; d<=nDias; d++){
+    const itens = porDia[d] || [];
+    html += '<div class="cel">';
+    html += `<div class="num">${d}</div>`;
+    itens.forEach((e)=>{
+      const idx = entradas.indexOf(e);
+      html += '<div class="item">'
+            + `<button class="rm nao-imprimir" title="Remover" onclick="removerEntrada(${idx})">×</button>`
+            + `<span class="tp">${rotuloTipo(e.tipo)}</span>`
+            + (e.hora ? `<span class="hr">${escapar(e.hora)}</span> ` : "")
+            + (e.local ? `<span class="lc">· ${escapar(e.local)}</span>` : "")
+            + (e.parts.length ? `<span class="pp">${e.parts.map(escapar).join(", ")}</span>` : "")
+            + (e.obs ? `<span class="ob">${escapar(e.obs)}</span>` : "")
+            + '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>'; // grade
+
+  // Rodapé com dados do grupo (editáveis antes de imprimir)
+  html += '<div class="cal-rodape">'
+        + '<div class="grupo-info">'
+        + '<div><b>Grupo:</b> <span contenteditable="true" class="edit">&nbsp;____________________</span></div>'
+        + '<div><b>Endereço:</b> <span contenteditable="true" class="edit">&nbsp;____________________</span></div>'
+        + '<div><b>Contato / WhatsApp:</b> <span contenteditable="true" class="edit">&nbsp;____________________</span></div>'
+        + '</div>'
+        + '<div class="assinatura">"Eu sou responsável."</div>'
+        + '</div>';
+  html += '</div>'; // cal-doc
+
+  document.getElementById("areaCalendario").innerHTML = html;
+  document.getElementById("botoesExport").style.display = "flex";
+  document.getElementById("cardLembrete").style.display = doMes.length ? "block" : "none";
+}
+
+function escapar(s){ return (s||"").replace(/[&<>"]/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+// ---------- Lembretes para o grupo (a partir das entradas já cadastradas) ----------
+function entradasProximos7Dias(){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const limite = new Date(hoje); limite.setDate(limite.getDate()+7);
+  return entradas
+    .filter(e=>{ const d = new Date(e.ano, e.mes0, e.dia); return d>=hoje && d<=limite; })
+    .sort((a,b)=> new Date(a.ano,a.mes0,a.dia) - new Date(b.ano,b.mes0,b.dia));
+}
+function entradasDoMesPainel(){
+  const mes0 = +document.getElementById("cMes").value;
+  const ano  = +document.getElementById("cAno").value;
+  return entradas.filter(e=>e.mes0===mes0 && e.ano===ano).sort((a,b)=>a.dia-b.dia);
+}
+function formatarLembrete(lista, titulo){
+  let txt = `🔔 LEMBRETE · CTO A.A.\n${titulo}\n\n`;
+  if(!lista.length){ return txt + "Nenhuma atividade cadastrada neste período."; }
+  lista.forEach(e=>{
+    const dataStr = `${String(e.dia).padStart(2,"0")}/${String(e.mes0+1).padStart(2,"0")}`;
+    txt += `📅 ${dataStr} — ${rotuloTipo(e.tipo)}\n`;
+    const linha2 = [e.hora, e.local].filter(Boolean).join("  ·  ");
+    if(linha2) txt += `🕐 ${linha2}\n`;
+    if(e.parts && e.parts.length) txt += `👥 ${e.parts.join(", ")}\n`;
+    if(e.obs) txt += `📝 ${e.obs}\n`;
+    txt += "\n";
+  });
+  txt += "Quem estiver na lista e não puder mais participar, avise a equipe combinada. 🙏";
+  return txt;
+}
+let ultimoLembrete = "";
+function gerarLembrete(escopo){
+  const lista  = escopo === "semana" ? entradasProximos7Dias() : entradasDoMesPainel();
+  const titulo = escopo === "semana" ? "Atividades dos próximos 7 dias:" : "Atividades cadastradas no mês:";
+  ultimoLembrete = formatarLembrete(lista, titulo);
+  document.getElementById("textoLembrete").textContent = ultimoLembrete;
+  document.getElementById("previaLembrete").classList.add("on");
+  document.getElementById("avisoCopiaLembrete").innerHTML = "";
+}
+function copiarLembrete(){
+  if(!ultimoLembrete) return;
+  const alvo = document.getElementById("avisoCopiaLembrete");
+  const ok = ()=>{ alvo.innerHTML = '<div class="aviso ok">Lembrete copiado. Cole no grupo do WhatsApp.</div>'; };
+  const falha = ()=>{ alvo.innerHTML = '<div class="aviso info">Selecione o texto acima e copie manualmente (Ctrl/Cmd+C).</div>'; };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ultimoLembrete).then(ok).catch(falha);
+  } else { falha(); }
+}
+function enviarLembreteWhatsApp(){
+  if(!ultimoLembrete) return;
+  if(navigator.share){
+    navigator.share({text: ultimoLembrete}).catch(()=>{});
+  } else {
+    window.open("https://wa.me/?text=" + encodeURIComponent(ultimoLembrete), "_blank");
+  }
+}
+
+function removerEntrada(idx){
+  if(idx>=0 && idx<entradas.length){ entradas.splice(idx,1); renderCalendario(); }
+}
+
+// Inclusão manual
+function abrirManual(){
+  const box = document.getElementById("boxManual");
+  box.style.display = box.style.display==="none" ? "" : "none";
+  // Preenche dias conforme mês do calendário
+  const s = document.getElementById("xDia");
+  s.innerHTML="";
+  const n = diasNoMes(+document.getElementById("cAno").value, +document.getElementById("cMes").value);
+  for(let d=1; d<=n; d++){ const o=document.createElement("option"); o.value=d; o.textContent=d; s.appendChild(o); }
+}
+function incluirManual(){
+  const e = {
+    ano:+document.getElementById("cAno").value,
+    mes0:+document.getElementById("cMes").value,
+    dia:+document.getElementById("xDia").value,
+    tipo:document.getElementById("xTipo").value,
+    hora:document.getElementById("xHora").value.trim(),
+    local:document.getElementById("xLocal").value.trim(),
+    parts:document.getElementById("xParts").value.split("\n").map(x=>x.trim()).filter(Boolean),
+    tel:"", obs:document.getElementById("xObs").value.trim(), origem:"manual"
+  };
+  entradas.push(e);
+  document.getElementById("xHora").value="";
+  document.getElementById("xLocal").value="";
+  document.getElementById("xObs").value="";
+  document.getElementById("xParts").value="";
+  renderCalendario();
+}
+
+function limparPainel(){
+  entradas = [];
+  document.getElementById("cCola").value = "";
+  document.getElementById("relatorio").innerHTML = "";
+  document.getElementById("areaCalendario").innerHTML = "";
+  document.getElementById("botoesExport").style.display = "none";
+  document.getElementById("cardLembrete").style.display = "none";
+  document.getElementById("previaLembrete").classList.remove("on");
+  ultimoLembrete = "";
+}
+
+// Exportar calendário como PNG (usa html2canvas; se ausente, orienta usar Imprimir)
+function baixarPNG(){
+  const alvo = document.getElementById("calDoc");
+  if(!alvo) return;
+  if(typeof html2canvas === "undefined"){
+    alert("Recurso de imagem indisponível (sem internet). Use \"Imprimir / Salvar PDF\".");
+    return;
+  }
+  html2canvas(alvo, {scale:2, backgroundColor:"#ffffff"}).then(canvas=>{
+    const a = document.createElement("a");
+    const mes = MESES[+document.getElementById("cMes").value];
+    const ano = document.getElementById("cAno").value;
+    a.download = `calendario_cto_${mes}_${ano}.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  }).catch(()=> alert("Não foi possível gerar a imagem. Use \"Imprimir / Salvar PDF\"."));
+}
+
+// Recalcula o calendário quando muda mês/ano no painel
+document.addEventListener("DOMContentLoaded", ()=>{
+  popularSelects();
+  ["cMes","cAno"].forEach(id=>document.getElementById(id).addEventListener("change", ()=>{
+    if(document.getElementById("areaCalendario").innerHTML.trim()) renderCalendario();
+  }));
+});
+</script>
+</body>
+</html>
